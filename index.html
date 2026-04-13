@@ -6,62 +6,61 @@
     <title>Financiera - Gestión de Préstamos</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
         body { background: #f0f4f8; padding: 16px; }
         .container { max-width: 700px; margin: 0 auto; }
-        .card { background: white; border-radius: 24px; padding: 1.2rem; margin-bottom: 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; }
-        .card-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; color: #1e293b; border-left: 4px solid #3b82f6; padding-left: 12px; }
+        .card { background: white; border-radius: 24px; padding: 1.2rem; margin-bottom: 1.2rem; border: 1px solid #e2e8f0; }
+        .card-header { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; border-left: 4px solid #3b82f6; padding-left: 12px; }
         .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
         .kpi-card { background: white; border-radius: 20px; padding: 14px; text-align: center; border: 1px solid #e2e8f0; }
         .kpi-number { font-size: 1.5rem; font-weight: 800; color: #1e40af; }
-        .kpi-label { font-size: 0.7rem; text-transform: uppercase; color: #64748b; }
+        .kpi-label { font-size: 0.7rem; color: #64748b; }
         .badge { padding: 4px 12px; border-radius: 30px; font-size: 0.7rem; font-weight: 600; display: inline-block; }
         .badge-activo { background: #dbeafe; color: #1e40af; }
         .badge-pagado { background: #d1fae5; color: #065f46; }
         .badge-incobrable { background: #fee2e2; color: #b91c1c; }
-        .btn { border: none; padding: 12px 18px; border-radius: 40px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; font-size: 0.85rem; }
+        .btn { border: none; padding: 12px; border-radius: 40px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; }
         .btn-primary { background: #2563eb; color: white; }
         .btn-outline { background: transparent; border: 1px solid #3b82f6; color: #2563eb; }
         .btn-warning { background: #f97316; color: white; }
-        .btn-danger { background: #ef4444; color: white; }
         .btn-sm { padding: 6px 12px; font-size: 0.7rem; width: auto; }
         .flex-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
         .flex-buttons .btn { flex: 1; }
         .form-group { margin-bottom: 1rem; }
-        label { font-weight: 600; font-size: 0.75rem; color: #334155; display: block; margin-bottom: 4px; }
-        input, select { width: 100%; padding: 10px 14px; border-radius: 16px; border: 1px solid #cbd5e1; font-size: 0.9rem; }
+        label { font-weight: 600; font-size: 0.75rem; display: block; margin-bottom: 4px; }
+        input, select { width: 100%; padding: 10px; border-radius: 16px; border: 1px solid #cbd5e1; }
         .prestamo-card, .socio-card { background: white; border-radius: 20px; padding: 1rem; margin-bottom: 12px; border: 1px solid #e2e8f0; }
-        .prestamo-header, .socio-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .prestamo-header, .socio-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
         .cliente-nombre, .socio-nombre { font-weight: 800; font-size: 1rem; }
         .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; margin: 10px 0; background: #f8fafc; padding: 10px; border-radius: 16px; }
         .detalle-item { display: flex; justify-content: space-between; }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background: white; border-radius: 28px; width: 90%; max-width: 500px; max-height: 85vh; overflow-y: auto; padding: 1.5rem; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.8rem; }
-        .close { font-size: 28px; cursor: pointer; color: #94a3b8; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 28px; width: 90%; max-width: 500px; padding: 1.5rem; }
+        .modal-header { display: flex; justify-content: space-between; margin-bottom: 1rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.8rem; }
+        .close { font-size: 28px; cursor: pointer; }
         .socio-aporte { background: #f1f5f9; padding: 8px; border-radius: 12px; margin-bottom: 8px; }
         .chart-small { max-height: 140px; margin: 10px 0; }
-        hr { margin: 1rem 0; }
+        .sync-status { background: #fef3c7; padding: 8px; border-radius: 16px; font-size: 0.7rem; text-align: center; margin-bottom: 12px; }
+        .text-center { text-align: center; }
         .table-simple { width: 100%; font-size: 0.7rem; border-collapse: collapse; }
         .table-simple td, .table-simple th { padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-        .text-center { text-align: center; }
-        .sync-status { background: #d1fae5; padding: 8px; border-radius: 16px; font-size: 0.7rem; text-align: center; margin-bottom: 12px; color: #065f46; }
-        .hidden { display: none; }
     </style>
 </head>
 <body>
 <div class="container">
-    <!-- Estado de sincronización (solo visible para admin, pero puedes ocultarlo) -->
     <div class="sync-status" id="syncStatus">
-        ✅ Datos sincronizados
+        🔄 Cargando datos...
     </div>
 
-    <!-- KPIs -->
-    <div class="card" style="padding-bottom: 0.8rem;">
-        <div class="kpi-grid" id="kpiContainer"></div>
+    <div class="card">
+        <div class="kpi-grid" id="kpiContainer">
+            <div class="kpi-card"><div class="kpi-number" id="totalPrestamos">0</div><div class="kpi-label">Préstamos</div></div>
+            <div class="kpi-card"><div class="kpi-number" id="totalMonto">$0</div><div class="kpi-label">Desembolsado</div></div>
+            <div class="kpi-card"><div class="kpi-number" id="totalSocios">$0</div><div class="kpi-label">Capital Socios</div></div>
+            <div class="kpi-card"><div class="kpi-number" id="totalIncobrable">$0</div><div class="kpi-label">Incobrable</div></div>
+        </div>
     </div>
 
-    <!-- Dashboard Gráfico -->
     <div class="card">
         <div class="card-header">📊 Dashboard</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
@@ -70,100 +69,80 @@
         </div>
     </div>
 
-    <!-- Socios Inversionistas -->
     <div class="card">
-        <div class="card-header">👥 Socios Inversionistas</div>
+        <div class="card-header">👥 Socios</div>
         <div id="listaSocios"></div>
-        <div class="flex-buttons">
-            <button class="btn btn-outline btn-sm" id="btnAgregarSocio">➕ Agregar Socio</button>
-        </div>
+        <button class="btn btn-outline btn-sm" id="btnAgregarSocio" style="width: auto;">➕ Agregar Socio</button>
     </div>
 
-    <!-- Cartera de Préstamos -->
     <div class="card">
-        <div class="card-header">📋 Cartera de Préstamos</div>
+        <div class="card-header">📋 Cartera</div>
         <div id="listaPrestamos"></div>
     </div>
 
-    <!-- Nuevo Préstamo -->
     <div class="card">
-        <div class="card-header">💰 Nuevo Desembolso</div>
-        <div class="form-group"><label>Cliente</label><input type="text" id="clienteNombre" placeholder="Nombre completo"></div>
-        <div class="form-group"><label>Monto Total ($)</label><input type="number" id="montoPrestamo" value="100" step="10"></div>
-        <div class="form-group"><label>Fecha Desembolso</label><input type="date" id="fechaDesembolso" value="2025-04-13"></div>
-        
-        <div class="card-header" style="font-size:1rem; margin-top:10px;">💰 Distribución entre Socios</div>
+        <div class="card-header">💰 Nuevo Préstamo</div>
+        <div class="form-group"><label>Cliente</label><input type="text" id="clienteNombre"></div>
+        <div class="form-group"><label>Monto ($)</label><input type="number" id="montoPrestamo" value="100"></div>
+        <div class="form-group"><label>Fecha</label><input type="date" id="fechaDesembolso" value="2025-04-13"></div>
+        <div class="card-header" style="font-size:1rem;">Distribución</div>
         <div id="distribucionSocios"></div>
-        <button class="btn btn-outline btn-sm" id="btnDistAuto" style="margin-bottom:10px;">🔀 Distribuir automáticamente</button>
-        <button class="btn btn-primary" id="btnCrearPrestamo">✅ Registrar Préstamo</button>
+        <button class="btn btn-outline btn-sm" id="btnDistAuto">🔀 Distribuir</button>
+        <button class="btn btn-primary" id="btnCrearPrestamo" style="margin-top:8px;">Registrar</button>
     </div>
 
-    <!-- Abono -->
     <div class="card">
-        <div class="card-header">💵 Registrar Abono</div>
+        <div class="card-header">💵 Abono</div>
         <div class="form-group"><label>Préstamo</label><select id="selectAbonoPrestamo"></select></div>
-        <div class="form-group"><label>Monto a abonar ($)</label><input type="number" id="montoAbono" value="0" step="10"></div>
-        <button class="btn btn-primary" id="btnRegistrarAbono">✅ Aplicar Abono</button>
+        <div class="form-group"><label>Monto</label><input type="number" id="montoAbono" value="0"></div>
+        <button class="btn btn-primary" id="btnRegistrarAbono">Aplicar</button>
     </div>
 </div>
 
-<!-- Modal Agregar Socio -->
-<div id="modalSocio" class="modal">
-    <div class="modal-content">
-        <div class="modal-header"><h3>👤 Nuevo Socio</h3><span class="close closeSocio">&times;</span></div>
-        <div class="form-group"><label>Nombre del Socio</label><input type="text" id="socioNombre" placeholder="Ej: Juan Pérez"></div>
-        <div class="form-group"><label>Capital Inicial ($)</label><input type="number" id="socioCapital" value="0" step="100"></div>
-        <button class="btn btn-primary" id="btnGuardarSocio">Guardar Socio</button>
-    </div>
-</div>
-
-<!-- Modal Detalle Préstamo -->
-<div id="modalDetalle" class="modal">
-    <div class="modal-content">
-        <div class="modal-header"><h3 id="detalleTitulo">Detalle</h3><span class="close closeDetalle">&times;</span></div>
-        <div id="detalleBody"></div>
-    </div>
-</div>
+<div id="modalSocio" class="modal"><div class="modal-content"><div class="modal-header"><h3>Nuevo Socio</h3><span class="close closeSocio">&times;</span></div><div class="form-group"><label>Nombre</label><input type="text" id="socioNombre"></div><div class="form-group"><label>Capital</label><input type="number" id="socioCapital" value="0"></div><button class="btn btn-primary" id="btnGuardarSocio">Guardar</button></div></div>
+<div id="modalDetalle" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="detalleTitulo">Detalle</h3><span class="close closeDetalle">&times;</span></div><div id="detalleBody"></div></div></div>
 
 <script>
-    // ==================== CONFIGURACIÓN ====================
-    // ⚠️ CAMBIA ESTA URL POR LA DE TU GOOGLE SHEET PUBLICADO COMO CSV
-    const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyrjT7zDc4_l3QveR1zPV2l6wIxIKNCBWD5Ya-H5xY4BFfILfJ61BZJkXk0XbUCkYQkEDj9eq14zfP/pub?gid=0&single=true&output=csv';
+    // ==================== TU URL DE GOOGLE SHEETS ====================
+    const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyrjT7zDc4_l3QveR1zPV2l6wIxIKNCBWD5Ya-H5xY4BFfILfJ61BZJkXk0XbUCkYQkEDj9eq14zfP/pub?output=csv';
     
-    // ==================== MODELO DE DATOS ====================
+    // Proxy CORS gratuito (evita el error 500)
+    const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+    
     let socios = [];
     let prestamos = [];
     let nextIdSocio = 1;
     let nextIdPrestamo = 1;
     let chartDist, chartSocios;
-    let guardando = false;
 
-    // ==================== FUNCIONES DE GOOGLE SHEETS ====================
+    // ==================== CARGAR DATOS ====================
     async function cargarDatos() {
         try {
-            document.getElementById('syncStatus').innerHTML = '🔄 Sincronizando datos...';
-            const response = await fetch(GOOGLE_SHEET_URL);
+            document.getElementById('syncStatus').innerHTML = '🔄 Cargando desde Google Sheets...';
+            document.getElementById('syncStatus').style.background = '#fef3c7';
+            
+            const response = await fetch(PROXY_URL + encodeURIComponent(GOOGLE_SHEET_URL));
             const csv = await response.text();
             
-            const lineas = csv.split('\n').filter(l => l.trim());
+            console.log('CSV recibido:', csv.substring(0, 200));
             
-            // Reiniciar datos
+            const lineas = csv.split('\n').filter(l => l.trim());
             socios = [];
             prestamos = [];
             
-            for(let i = 1; i < lineas.length; i++) {
+            for(let i = 0; i < lineas.length; i++) {
                 const cols = lineas[i].split(',');
-                if(cols.length >= 4) {
+                if(cols.length >= 3) {
                     const tipo = cols[0] ? cols[0].replace(/^"|"$/g, '') : '';
                     
-                    if(tipo === 'SOCIO') {
+                    if(tipo === 'SOCIO' && cols.length >= 4) {
                         socios.push({
                             id: parseInt(cols[1]) || nextIdSocio++,
                             nombre: cols[2] ? cols[2].replace(/^"|"$/g, '') : '',
                             capitalInicial: parseFloat(cols[3]) || 0,
                             saldoActual: parseFloat(cols[4]) || 0
                         });
-                    } else if(tipo === 'PRESTAMO') {
+                    } else if(tipo === 'PRESTAMO' && cols.length >= 5) {
                         prestamos.push({
                             id: parseInt(cols[1]) || nextIdPrestamo++,
                             cliente: cols[2] ? cols[2].replace(/^"|"$/g, '') : '',
@@ -177,79 +156,51 @@
                 }
             }
             
-            // Actualizar IDs
             if(socios.length > 0) nextIdSocio = Math.max(...socios.map(s=>s.id)) + 1;
             if(prestamos.length > 0) nextIdPrestamo = Math.max(...prestamos.map(p=>p.id)) + 1;
             
-            actualizarSaldosSocios();
+            actualizarSaldos();
             renderAll();
+            
             document.getElementById('syncStatus').innerHTML = '✅ Datos sincronizados con Google Sheets';
+            document.getElementById('syncStatus').style.background = '#d1fae5';
             setTimeout(() => {
                 document.getElementById('syncStatus').innerHTML = '📡 Todo en orden';
-            }, 2000);
+            }, 3000);
+            
         } catch(e) {
-            console.error('Error al cargar:', e);
-            document.getElementById('syncStatus').innerHTML = '⚠️ Usando datos locales. Conecta a internet para sincronizar.';
+            console.error('Error:', e);
+            document.getElementById('syncStatus').innerHTML = '⚠️ Error al cargar. Usando datos locales. Verifica la URL.';
+            document.getElementById('syncStatus').style.background = '#fee2e2';
             renderAll();
         }
     }
 
-    async function guardarDatos() {
-        if(guardando) return;
-        guardando = true;
-        
-        let csv = 'tipo,id,nombre,monto,saldo_extra,estado\n';
-        
-        // Guardar socios
-        for(let s of socios) {
-            csv += `SOCIO,${s.id},"${s.nombre}",${s.capitalInicial},${s.saldoActual},\n`;
-        }
-        
-        // Guardar préstamos
-        for(let p of prestamos) {
-            csv += `PRESTAMO,${p.id},"${p.cliente}",${p.montoOriginal},"${p.fechaDesembolso}",${p.incobrable}\n`;
-        }
-        
-        // Crear blob y descargar (como respaldo automático)
-        const blob = new Blob([csv], {type: 'text/csv'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup_${new Date().toISOString().slice(0,19)}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        guardando = false;
-    }
-
-    // ==================== ACTUALIZAR SALDOS ====================
-    function actualizarSaldosSocios() {
+    function actualizarSaldos() {
         socios.forEach(s => s.saldoActual = s.capitalInicial);
-        
         for(let p of prestamos) {
             if(p.incobrable) continue;
-            const deudaActual = calcularDeuda(p);
-            const montoDevuelto = p.montoOriginal - deudaActual;
-            if(p.distribucion && p.distribucion.length > 0) {
-                for(let dist of p.distribucion) {
-                    const socio = socios.find(s => s.id === dist.socioId);
+            const deuda = calcularDeuda(p);
+            const devuelto = p.montoOriginal - deuda;
+            if(p.distribucion) {
+                for(let d of p.distribucion) {
+                    const socio = socios.find(s => s.id === d.socioId);
                     if(socio) {
-                        const porcentaje = dist.monto / p.montoOriginal;
-                        const devuelto = montoDevuelto * porcentaje;
-                        socio.saldoActual = socio.saldoActual - (dist.monto - devuelto);
+                        const porcentaje = d.monto / p.montoOriginal;
+                        socio.saldoActual = socio.saldoActual - (d.monto - devuelto * porcentaje);
                     }
                 }
             }
         }
     }
 
-    // ==================== REGLAS DE PRÉSTAMO ====================
+    // ==================== REGLAS ====================
     function obtenerPrimerPago(fechaStr) {
         const fecha = new Date(fechaStr);
         const dia = fecha.getDate();
         let mes = fecha.getMonth(), anio = fecha.getFullYear();
         if(dia >= 26) return new Date(anio, mes+1, 15);
-        else if(dia >= 11 && dia <= 25) { let p = new Date(anio, mes, 30); if(p.getMonth()!==mes) p = new Date(anio, mes+1, 0); return p; }
+        else if(dia >= 11 && dia <= 25) return new Date(anio, mes, 30);
         else return new Date(anio, mes, 15);
     }
 
@@ -259,7 +210,7 @@
         while(iter <= hasta) {
             fechas.push(new Date(iter));
             let dia = iter.getDate(), mes = iter.getMonth(), anio = iter.getFullYear();
-            if(dia === 15) { let sig = new Date(anio, mes, 30); if(sig.getMonth() !== mes) sig = new Date(anio, mes+1, 0); iter = sig; }
+            if(dia === 15) iter = new Date(anio, mes, 30);
             else iter = new Date(anio, mes+1, 15);
         }
         return fechas;
@@ -268,36 +219,37 @@
     function calcularDeuda(prestamo, fechaCorte = new Date()) {
         if(prestamo.incobrable) return prestamo.montoOriginal;
         const abonos = [...prestamo.historialAbonos].sort((a,b)=>new Date(a.fecha)-new Date(b.fecha));
-        const fechasPago = generarFechasPago(prestamo, fechaCorte);
+        const fechas = generarFechasPago(prestamo, fechaCorte);
         let deuda = prestamo.montoOriginal;
         let idx = 0;
-        for(let periodo of fechasPago) {
-            let abonosPeriodo = 0;
-            while(idx < abonos.length && new Date(abonos[idx].fecha) <= periodo) { abonosPeriodo += abonos[idx].monto; idx++; }
-            let saldoPre = Math.max(0, deuda - abonosPeriodo);
+        for(let fecha of fechas) {
+            let abonosEnPeriodo = 0;
+            while(idx < abonos.length && new Date(abonos[idx].fecha) <= fecha) {
+                abonosEnPeriodo += abonos[idx].monto;
+                idx++;
+            }
+            let saldoPre = Math.max(0, deuda - abonosEnPeriodo);
             if(saldoPre > 0) deuda = saldoPre * 1.10;
             else deuda = 0;
         }
         let abonosPost = 0;
-        while(idx < abonos.length && new Date(abonos[idx].fecha) <= fechaCorte) { abonosPost += abonos[idx].monto; idx++; }
+        while(idx < abonos.length && new Date(abonos[idx].fecha) <= fechaCorte) {
+            abonosPost += abonos[idx].monto;
+            idx++;
+        }
         return Math.round(Math.max(0, deuda - abonosPost) * 100) / 100;
     }
 
-    function obtenerProxPago(prestamo, base = new Date()) {
+    function obtenerProxPago(prestamo) {
         if(prestamo.incobrable) return null;
         let iter = obtenerPrimerPago(prestamo.fechaDesembolso);
+        const hoy = new Date();
         for(let i = 0; i < 40; i++) {
-            if(iter > base) return iter;
-            let dia = iter.getDate(), mes = iter.getMonth(), anio = iter.getFullYear();
-            if(dia === 15) { let sig = new Date(anio, mes, 30); if(sig.getMonth() !== mes) sig = new Date(anio, mes+1, 0); iter = sig; }
-            else iter = new Date(anio, mes+1, 15);
+            if(iter > hoy) return iter;
+            if(iter.getDate() === 15) iter = new Date(iter.getFullYear(), iter.getMonth(), 30);
+            else iter = new Date(iter.getFullYear(), iter.getMonth()+1, 15);
         }
         return iter;
-    }
-
-    function montoProxPago(prestamo) {
-        if(prestamo.incobrable) return 0;
-        return Math.round(calcularDeuda(prestamo, new Date()) * 1.10 * 100) / 100;
     }
 
     // ==================== RENDER ====================
@@ -314,22 +266,19 @@
         const container = document.getElementById('listaSocios');
         container.innerHTML = '';
         if(socios.length === 0) {
-            container.innerHTML = '<div class="text-center" style="padding:20px; color:#64748b;">No hay socios registrados</div>';
+            container.innerHTML = '<div class="text-center">No hay socios</div>';
             return;
         }
         for(let s of socios) {
-            const disponible = s.saldoActual;
-            const invertido = s.capitalInicial - s.saldoActual;
             container.innerHTML += `
                 <div class="socio-card">
                     <div class="socio-header">
-                        <span class="socio-nombre">👤 ${escapeHtml(s.nombre)}</span>
+                        <span>👤 ${escapeHtml(s.nombre)}</span>
                         <button class="btn btn-outline btn-sm" onclick="editarSocio(${s.id})">✏️</button>
                     </div>
                     <div class="grid-2col">
-                        <div class="detalle-item"><span>Capital:</span><span>$${s.capitalInicial}</span></div>
-                        <div class="detalle-item"><span>💰 Disponible:</span><span><strong>$${s.saldoActual.toFixed(2)}</strong></span></div>
-                        <div class="detalle-item"><span>📊 Invertido:</span><span>$${invertido.toFixed(2)}</span></div>
+                        <div>Capital: $${s.capitalInicial}</div>
+                        <div>Disponible: <strong>$${s.saldoActual.toFixed(2)}</strong></div>
                     </div>
                 </div>
             `;
@@ -340,43 +289,29 @@
         const container = document.getElementById('listaPrestamos');
         container.innerHTML = '';
         if(prestamos.length === 0) {
-            container.innerHTML = '<div class="text-center" style="padding:20px; color:#64748b;">No hay préstamos registrados</div>';
+            container.innerHTML = '<div class="text-center">No hay préstamos</div>';
             return;
         }
         for(let p of prestamos) {
             const deuda = calcularDeuda(p);
             const abonado = p.historialAbonos.reduce((s,a)=>s+a.monto,0);
-            const proxFecha = obtenerProxPago(p);
-            const montoProx = montoProxPago(p);
+            const prox = obtenerProxPago(p);
             const estado = p.incobrable ? 'Incobrable' : (deuda <= 0 ? 'Pagado' : 'Activo');
-            let badgeClass = p.incobrable ? 'badge-incobrable' : (deuda <= 0 ? 'badge-pagado' : 'badge-activo');
-            
-            let distribucionHtml = '';
-            if(p.distribucion && p.distribucion.length > 0) {
-                distribucionHtml = '<div style="font-size:0.65rem; margin-top:8px; background:#f1f5f9; padding:6px; border-radius:12px;">';
-                for(let d of p.distribucion) {
-                    const socio = socios.find(s => s.id === d.socioId);
-                    if(socio) distribucionHtml += `<span>${socio.nombre}: $${d.monto}</span> `;
-                }
-                distribucionHtml += '</div>';
-            }
-            
+            const badge = p.incobrable ? 'badge-incobrable' : (deuda <= 0 ? 'badge-pagado' : 'badge-activo');
             container.innerHTML += `
                 <div class="prestamo-card">
                     <div class="prestamo-header">
                         <span class="cliente-nombre">${escapeHtml(p.cliente)}</span>
-                        <span class="badge ${badgeClass}">${estado}</span>
+                        <span class="badge ${badge}">${estado}</span>
                     </div>
                     <div class="grid-2col">
-                        <div class="detalle-item"><span>Monto:</span><span>$${p.montoOriginal}</span></div>
-                        <div class="detalle-item"><span>Abonado:</span><span>$${abonado.toFixed(2)}</span></div>
-                        <div class="detalle-item"><span>Saldo:</span><span><strong>$${deuda.toFixed(2)}</strong></span></div>
-                        <div class="detalle-item"><span>Próx pago:</span><span>${proxFecha ? proxFecha.toLocaleDateString() : '—'}</span></div>
-                        <div class="detalle-item"><span>Valor cuota:</span><span>$${montoProx.toFixed(2)}</span></div>
+                        <div>Monto: $${p.montoOriginal}</div>
+                        <div>Abonado: $${abonado.toFixed(2)}</div>
+                        <div>Saldo: <strong>$${deuda.toFixed(2)}</strong></div>
+                        <div>Próx: ${prox ? prox.toLocaleDateString() : '—'}</div>
                     </div>
-                    ${distribucionHtml}
                     <div class="flex-buttons">
-                        <button class="btn btn-outline btn-sm" onclick="verDetalle(${p.id})">📄 Estado</button>
+                        <button class="btn btn-outline btn-sm" onclick="verDetalle(${p.id})">📄 Ver</button>
                         ${!p.incobrable && deuda > 0 ? `<button class="btn btn-warning btn-sm" onclick="marcarIncobrable(${p.id})">⚠️ Incobrable</button>` : ''}
                     </div>
                 </div>
@@ -390,201 +325,147 @@
         for(let p of prestamos) {
             if(!p.incobrable) {
                 const deuda = calcularDeuda(p);
-                if(deuda > 0) sel.innerHTML += `<option value="${p.id}">${p.cliente} - Saldo: $${deuda.toFixed(2)}</option>`;
+                if(deuda > 0) sel.innerHTML += `<option value="${p.id}">${p.cliente} - $${deuda.toFixed(2)}</option>`;
             }
         }
     }
 
     function renderKPIs() {
-        const totalDesembolsado = prestamos.reduce((s,p)=>s+p.montoOriginal,0);
-        let gananciaReal = 0, totalIncobrable = 0;
-        for(let p of prestamos) {
-            const abonado = p.historialAbonos.reduce((s,a)=>s+a.monto,0);
-            gananciaReal += Math.max(0, abonado - Math.min(p.montoOriginal, abonado));
-            if(p.incobrable) totalIncobrable += p.montoOriginal;
-        }
-        const totalSocios = socios.reduce((s,ss)=>s+ss.capitalInicial,0);
-        document.getElementById('kpiContainer').innerHTML = `
-            <div class="kpi-card"><div class="kpi-number">$${totalDesembolsado.toFixed(2)}</div><div class="kpi-label">Total Desembolsado</div></div>
-            <div class="kpi-card"><div class="kpi-number">$${gananciaReal.toFixed(2)}</div><div class="kpi-label">Ganancia Real</div></div>
-            <div class="kpi-card"><div class="kpi-number">$${totalSocios.toFixed(2)}</div><div class="kpi-label">Capital Socios</div></div>
-            <div class="kpi-card"><div class="kpi-number">$${totalIncobrable.toFixed(2)}</div><div class="kpi-label">Incobrable</div></div>
-        `;
+        const totalMonto = prestamos.reduce((s,p)=>s+p.montoOriginal,0);
+        const totalIncobrable = prestamos.filter(p=>p.incobrable).reduce((s,p)=>s+p.montoOriginal,0);
+        const totalSociosCapital = socios.reduce((s,ss)=>s+ss.capitalInicial,0);
+        document.getElementById('totalPrestamos').innerText = prestamos.length;
+        document.getElementById('totalMonto').innerText = `$${totalMonto.toFixed(2)}`;
+        document.getElementById('totalSocios').innerText = `$${totalSociosCapital.toFixed(2)}`;
+        document.getElementById('totalIncobrable').innerText = `$${totalIncobrable.toFixed(2)}`;
     }
 
     function actualizarGraficos() {
-        const activos = prestamos.filter(p => !p.incobrable).reduce((s,p)=>s+calcularDeuda(p),0);
-        const incobrables = prestamos.filter(p => p.incobrable).reduce((s,p)=>s+p.montoOriginal,0);
+        const activos = prestamos.filter(p=>!p.incobrable).reduce((s,p)=>s+calcularDeuda(p),0);
+        const incobrables = prestamos.filter(p=>p.incobrable).reduce((s,p)=>s+p.montoOriginal,0);
         if(chartDist) chartDist.destroy();
-        const ctxDist = document.getElementById('chartDistribucion').getContext('2d');
-        chartDist = new Chart(ctxDist, { type: 'doughnut', data: { labels: ['Activos', 'Incobrables'], datasets: [{ data: [activos, incobrables], backgroundColor: ['#3b82f6', '#ef4444'] }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 } } } } } });
-        
+        chartDist = new Chart(document.getElementById('chartDistribucion'), {
+            type: 'doughnut',
+            data: { labels: ['Activos', 'Incobrables'], datasets: [{ data: [activos, incobrables], backgroundColor: ['#3b82f6', '#ef4444'] }] },
+            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 } } } } }
+        });
+        if(socios.length > 0 && chartSocios) chartSocios.destroy();
         if(socios.length > 0) {
-            const datosSocios = socios.map(s => s.capitalInicial);
-            const nombresSocios = socios.map(s => s.nombre.length > 10 ? s.nombre.slice(0,8)+'..' : s.nombre);
-            if(chartSocios) chartSocios.destroy();
-            const ctxSoc = document.getElementById('chartSocios').getContext('2d');
-            chartSocios = new Chart(ctxSoc, { type: 'bar', data: { labels: nombresSocios, datasets: [{ label: 'Capital', data: datosSocios, backgroundColor: '#60a5fa', borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$'+v } } } } });
+            chartSocios = new Chart(document.getElementById('chartSocios'), {
+                type: 'bar',
+                data: { labels: socios.map(s=>s.nombre.slice(0,8)), datasets: [{ label: 'Capital', data: socios.map(s=>s.capitalInicial), backgroundColor: '#60a5fa' }] },
+                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$'+v } } } }
+            });
         }
     }
 
-    // ==================== DISTRIBUCIÓN ====================
     function actualizarDistribucionUI() {
         const container = document.getElementById('distribucionSocios');
-        const montoTotal = parseFloat(document.getElementById('montoPrestamo').value) || 0;
+        const total = parseFloat(document.getElementById('montoPrestamo').value) || 0;
         container.innerHTML = '';
-        if(socios.length === 0) {
-            container.innerHTML = '<div class="text-center" style="padding:20px; color:#64748b;">⚠️ Primero agrega socios</div>';
-            return;
-        }
+        if(socios.length === 0) { container.innerHTML = '<div>⚠️ Agrega socios primero</div>'; return; }
         for(let s of socios) {
-            container.innerHTML += `
-                <div class="socio-aporte">
-                    <label>${escapeHtml(s.nombre)} (Disponible: $${s.saldoActual.toFixed(2)})</label>
-                    <input type="number" class="aporte-socio" data-socio-id="${s.id}" placeholder="Monto" value="0" step="10" min="0">
-                </div>
-            `;
+            container.innerHTML += `<div class="socio-aporte"><label>${escapeHtml(s.nombre)} ($${s.saldoActual.toFixed(2)})</label><input type="number" class="aporte-socio" data-socio-id="${s.id}" value="0" step="10"></div>`;
         }
     }
 
     function obtenerDistribucion() {
-        const distribucion = [];
-        document.querySelectorAll('.aporte-socio').forEach(input => {
-            const monto = parseFloat(input.value);
-            if(monto > 0) distribucion.push({ socioId: parseInt(input.dataset.socioId), monto: monto });
+        const dist = [];
+        document.querySelectorAll('.aporte-socio').forEach(inp => {
+            const monto = parseFloat(inp.value);
+            if(monto > 0) dist.push({ socioId: parseInt(inp.dataset.socioId), monto });
         });
-        return distribucion;
+        return dist;
     }
 
-    function distribuirAutomaticamente() {
-        const montoTotal = parseFloat(document.getElementById('montoPrestamo').value) || 0;
-        if(socios.length === 0) return;
-        const totalDisponible = socios.reduce((s,ss)=>s+ss.saldoActual,0);
-        if(totalDisponible === 0) return;
-        document.querySelectorAll('.aporte-socio').forEach(input => {
-            const socioId = parseInt(input.dataset.socioId);
-            const socio = socios.find(s => s.id === socioId);
-            if(socio) {
-                const aporte = (socio.saldoActual / totalDisponible) * montoTotal;
-                input.value = Math.min(aporte, socio.saldoActual).toFixed(2);
-            }
+    function distribuirAuto() {
+        const total = parseFloat(document.getElementById('montoPrestamo').value) || 0;
+        const disponible = socios.reduce((s,ss)=>s+ss.saldoActual,0);
+        if(disponible === 0) return;
+        document.querySelectorAll('.aporte-socio').forEach(inp => {
+            const id = parseInt(inp.dataset.socioId);
+            const socio = socios.find(s=>s.id===id);
+            if(socio) inp.value = ((socio.saldoActual / disponible) * total).toFixed(2);
         });
     }
 
-    // ==================== CRUD ====================
     function agregarSocio() {
         const nombre = document.getElementById('socioNombre').value.trim();
         const capital = parseFloat(document.getElementById('socioCapital').value);
         if(!nombre) return alert('Nombre requerido');
         if(isNaN(capital) || capital < 0) return alert('Capital válido');
-        socios.push({ id: nextIdSocio++, nombre: nombre, capitalInicial: capital, saldoActual: capital });
+        socios.push({ id: nextIdSocio++, nombre, capitalInicial: capital, saldoActual: capital });
         document.getElementById('socioNombre').value = '';
         document.getElementById('socioCapital').value = '0';
         document.getElementById('modalSocio').style.display = 'none';
         renderAll();
-        guardarDatos();
     }
 
     window.editarSocio = function(id) {
-        const socio = socios.find(s => s.id === id);
-        if(!socio) return;
-        const nuevoNombre = prompt('Nuevo nombre:', socio.nombre);
-        const nuevoCapital = parseFloat(prompt('Nuevo capital inicial:', socio.capitalInicial));
-        if(nuevoNombre) socio.nombre = nuevoNombre;
-        if(!isNaN(nuevoCapital) && nuevoCapital >= 0) {
-            socio.capitalInicial = nuevoCapital;
-            socio.saldoActual = nuevoCapital;
-        }
+        const s = socios.find(s=>s.id===id);
+        if(!s) return;
+        const nom = prompt('Nuevo nombre:', s.nombre);
+        const cap = parseFloat(prompt('Nuevo capital:', s.capitalInicial));
+        if(nom) s.nombre = nom;
+        if(!isNaN(cap) && cap >= 0) { s.capitalInicial = cap; s.saldoActual = cap; }
         renderAll();
-        guardarDatos();
     };
 
     function crearPrestamo() {
         const cliente = document.getElementById('clienteNombre').value.trim();
-        if(!cliente) return alert('Nombre del cliente');
         const monto = parseFloat(document.getElementById('montoPrestamo').value);
-        if(isNaN(monto) || monto <= 0) return alert('Monto válido');
         const fecha = document.getElementById('fechaDesembolso').value;
-        if(!fecha) return alert('Fecha');
-        
-        const distribucion = obtenerDistribucion();
-        const sumaDist = distribucion.reduce((s,d)=>s+d.monto,0);
-        if(Math.abs(sumaDist - monto) > 0.01) return alert(`La suma de aportes ($${sumaDist}) debe igualar el monto ($${monto})`);
-        
-        for(let d of distribucion) {
-            const socio = socios.find(s => s.id === d.socioId);
-            if(socio && d.monto > socio.saldoActual) return alert(`${socio.nombre} solo tiene $${socio.saldoActual} disponible`);
+        if(!cliente) return alert('Cliente requerido');
+        if(isNaN(monto) || monto <= 0) return alert('Monto válido');
+        const dist = obtenerDistribucion();
+        const suma = dist.reduce((s,d)=>s+d.monto,0);
+        if(Math.abs(suma - monto) > 0.01) return alert(`Suma de aportes ($${suma}) debe igualar monto ($${monto})`);
+        for(let d of dist) {
+            const s = socios.find(s=>s.id===d.socioId);
+            if(s && d.monto > s.saldoActual) return alert(`${s.nombre} solo tiene $${s.saldoActual}`);
         }
-        
-        prestamos.push({
-            id: nextIdPrestamo++,
-            cliente: cliente,
-            montoOriginal: monto,
-            fechaDesembolso: fecha,
-            historialAbonos: [],
-            incobrable: false,
-            distribucion: distribucion
-        });
-        
-        actualizarSaldosSocios();
+        prestamos.push({ id: nextIdPrestamo++, cliente, montoOriginal: monto, fechaDesembolso: fecha, historialAbonos: [], incobrable: false, distribucion: dist });
+        actualizarSaldos();
         renderAll();
-        guardarDatos();
-        
         document.getElementById('clienteNombre').value = '';
         document.getElementById('montoPrestamo').value = '100';
-        document.querySelectorAll('.aporte-socio').forEach(input => input.value = '0');
-        alert('✅ Préstamo registrado');
+        document.querySelectorAll('.aporte-socio').forEach(i=>i.value='0');
+        alert('Préstamo registrado');
     }
 
     function registrarAbono() {
         const id = parseInt(document.getElementById('selectAbonoPrestamo').value);
-        if(isNaN(id)) return alert('Seleccione préstamo');
         const monto = parseFloat(document.getElementById('montoAbono').value);
+        if(isNaN(id)) return alert('Seleccione préstamo');
         if(isNaN(monto) || monto <= 0) return alert('Monto válido');
-        const p = prestamos.find(p => p.id === id);
-        if(!p || p.incobrable) return alert('Préstamo inválido');
-        const deudaActual = calcularDeuda(p);
-        if(monto > deudaActual + 0.01) return alert(`Máximo: $${deudaActual.toFixed(2)}`);
-        
-        p.historialAbonos.push({ monto: monto, fecha: new Date().toISOString().slice(0,10) });
-        actualizarSaldosSocios();
+        const p = prestamos.find(p=>p.id===id);
+        if(!p) return;
+        const deuda = calcularDeuda(p);
+        if(monto > deuda) return alert(`Máximo: $${deuda.toFixed(2)}`);
+        p.historialAbonos.push({ monto, fecha: new Date().toISOString().slice(0,10) });
+        actualizarSaldos();
         renderAll();
-        guardarDatos();
         document.getElementById('montoAbono').value = '';
-        alert(`✅ Abono de $${monto} registrado`);
+        alert(`Abono de $${monto} registrado`);
     }
 
     window.marcarIncobrable = function(id) {
         if(confirm('¿Marcar como incobrable?')) {
-            const p = prestamos.find(p => p.id === id);
+            const p = prestamos.find(p=>p.id===id);
             if(p) p.incobrable = true;
-            actualizarSaldosSocios();
+            actualizarSaldos();
             renderAll();
-            guardarDatos();
         }
     };
 
     window.verDetalle = function(id) {
-        const p = prestamos.find(p => p.id === id);
+        const p = prestamos.find(p=>p.id===id);
         if(!p) return;
         const deuda = calcularDeuda(p);
         const abonado = p.historialAbonos.reduce((s,a)=>s+a.monto,0);
-        let html = `<p><strong>${escapeHtml(p.cliente)}</strong></p>
-                    <p>💰 Monto: $${p.montoOriginal}<br>💵 Abonado: $${abonado.toFixed(2)}<br>📉 Saldo: <strong>$${deuda.toFixed(2)}</strong></p>
-                    <hr><strong>📝 Distribución:</strong>`;
-        if(p.distribucion && p.distribucion.length > 0) {
-            for(let d of p.distribucion) {
-                const socio = socios.find(s => s.id === d.socioId);
-                if(socio) html += `<div>${socio.nombre}: $${d.monto}</div>`;
-            }
-        } else html += `<div>No hay distribución</div>`;
-        html += `<hr><strong>📝 Abonos:</strong>`;
-        if(p.historialAbonos.length === 0) html += `<p>No hay abonos</p>`;
-        else {
-            html += `<table class="table-simple"><tr><th>Fecha</th><th>Monto</th></tr>`;
-            p.historialAbonos.forEach(a => { html += `<tr><td>${a.fecha}</td><td>$${a.monto.toFixed(2)}</td></tr>`; });
-            html += `</table>`;
-        }
+        let html = `<p><strong>${escapeHtml(p.cliente)}</strong></p><p>Monto: $${p.montoOriginal}<br>Abonado: $${abonado.toFixed(2)}<br>Saldo: <strong>$${deuda.toFixed(2)}</strong></p><hr><strong>Abonos:</strong>`;
+        if(p.historialAbonos.length===0) html += '<p>No hay abonos</p>';
+        else { html += '<table class="table-simple"><tr><th>Fecha</th><th>Monto</th></tr>'; p.historialAbonos.forEach(a=>{ html += `<tr><td>${a.fecha}</td><td>$${a.monto.toFixed(2)}</td></tr>`; }); html += `</table>`; }
         document.getElementById('detalleBody').innerHTML = html;
         document.getElementById('detalleTitulo').innerHTML = `📄 ${escapeHtml(p.cliente)}`;
         document.getElementById('modalDetalle').style.display = 'flex';
@@ -592,31 +473,20 @@
 
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m=>m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
 
-    // ==================== EVENTOS ====================
+    // Eventos
     document.getElementById('btnAgregarSocio').onclick = () => document.getElementById('modalSocio').style.display = 'flex';
     document.getElementById('btnGuardarSocio').onclick = agregarSocio;
     document.getElementById('btnCrearPrestamo').onclick = crearPrestamo;
     document.getElementById('btnRegistrarAbono').onclick = registrarAbono;
-    document.getElementById('btnDistAuto').onclick = distribuirAutomaticamente;
+    document.getElementById('btnDistAuto').onclick = distribuirAuto;
     document.getElementById('montoPrestamo').addEventListener('input', () => actualizarDistribucionUI());
-    
-    document.querySelectorAll('.close, .closeSocio, .closeDetalle').forEach(el => {
-        el.onclick = () => {
-            document.getElementById('modalSocio').style.display = 'none';
-            document.getElementById('modalDetalle').style.display = 'none';
-        };
-    });
+    document.querySelectorAll('.close, .closeSocio, .closeDetalle').forEach(el => el.onclick = () => { document.getElementById('modalSocio').style.display = 'none'; document.getElementById('modalDetalle').style.display = 'none'; });
     window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
-    // ==================== INICIAR ====================
-    // Si no hay datos, crear ejemplo mínimo
-    if(socios.length === 0 && prestamos.length === 0) {
-        socios.push({ id: nextIdSocio++, nombre: 'Ana García', capitalInicial: 5000, saldoActual: 5000 });
-        socios.push({ id: nextIdSocio++, nombre: 'Carlos López', capitalInicial: 3000, saldoActual: 3000 });
-    }
+    // Iniciar
+    socios = [];
+    prestamos = [];
     renderAll();
-    
-    // Intentar cargar desde Google Sheets (sin bloquear)
     cargarDatos();
 </script>
 </body>
