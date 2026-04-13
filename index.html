@@ -49,7 +49,7 @@
 <body>
 <div class="container">
     <div class="sync-status" id="syncStatus">
-        🔄 Cargando datos...
+        📁 Cargando datos desde Google Sheets...
     </div>
 
     <div class="card">
@@ -103,11 +103,9 @@
 <div id="modalDetalle" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="detalleTitulo">Detalle</h3><span class="close closeDetalle">&times;</span></div><div id="detalleBody"></div></div></div>
 
 <script>
-    // ==================== TU URL DE GOOGLE SHEETS ====================
+    // ==================== CONFIGURACIÓN ====================
+    // ⚠️ CAMBIA ESTA URL POR LA DE TU GOOGLE SHEETS PUBLICADO COMO CSV
     const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyrjT7zDc4_l3QveR1zPV2l6wIxIKNCBWD5Ya-H5xY4BFfILfJ61BZJkXk0XbUCkYQkEDj9eq14zfP/pub?output=csv';
-    
-    // Proxy CORS gratuito (evita el error 500)
-    const PROXY_URL = 'https://api.allorigins.win/raw?url=';
     
     let socios = [];
     let prestamos = [];
@@ -115,49 +113,87 @@
     let nextIdPrestamo = 1;
     let chartDist, chartSocios;
 
-    // ==================== CARGAR DATOS ====================
+    // ==================== CARGAR DESDE GOOGLE SHEETS ====================
     async function cargarDatos() {
         try {
             document.getElementById('syncStatus').innerHTML = '🔄 Cargando desde Google Sheets...';
             document.getElementById('syncStatus').style.background = '#fef3c7';
             
-            const response = await fetch(PROXY_URL + encodeURIComponent(GOOGLE_SHEET_URL));
+            // Método más simple: fetch directo (Cloudflare Pages puede tener CORS, pero lo intentamos)
+            const response = await fetch(GOOGLE_SHEET_URL);
             const csv = await response.text();
             
-            console.log('CSV recibido:', csv.substring(0, 200));
+            console.log('CSV recibido:', csv.substring(0, 300));
             
             const lineas = csv.split('\n').filter(l => l.trim());
+            
+            // Reiniciar datos
             socios = [];
             prestamos = [];
             
-            for(let i = 0; i < lineas.length; i++) {
-                const cols = lineas[i].split(',');
-                if(cols.length >= 3) {
-                    const tipo = cols[0] ? cols[0].replace(/^"|"$/g, '') : '';
+            // Saltar cabecera (primera línea)
+            for(let i = 1; i < lineas.length; i++) {
+                const linea = lineas[i];
+                // Parsear CSV respetando comillas
+                const cols = [];
+                let enComillas = false;
+                let valorActual = '';
+                
+                for(let c = 0; c < linea.length; c++) {
+                    const char = linea[c];
+                    if(char === '"') {
+                        enComillas = !enComillas;
+                    } else if(char === ',' && !enComillas) {
+                        cols.push(valorActual.trim());
+                        valorActual = '';
+                    } else {
+                        valorActual += char;
+                    }
+                }
+                cols.push(valorActual.trim());
+                
+                if(cols.length >= 3 && cols[0] && cols[0] !== 'id') {
+                    const id = parseInt(cols[0]) || 0;
+                    const cliente = cols[1] ? cols[1].replace(/^"|"$/g, '') : '';
+                    const monto = parseFloat(cols[2]) || 0;
+                    const fecha = cols[3] ? cols[3].replace(/^"|"$/g, '') : '';
+                    const abonos = parseFloat(cols[4]) || 0;
+                    const incobrable = cols[5] === 'TRUE' || cols[5] === 'true';
+                    const sociosStr = cols[6] ? cols[6].replace(/^"|"$/g, '') : '';
                     
-                    if(tipo === 'SOCIO' && cols.length >= 4) {
-                        socios.push({
-                            id: parseInt(cols[1]) || nextIdSocio++,
-                            nombre: cols[2] ? cols[2].replace(/^"|"$/g, '') : '',
-                            capitalInicial: parseFloat(cols[3]) || 0,
-                            saldoActual: parseFloat(cols[4]) || 0
-                        });
-                    } else if(tipo === 'PRESTAMO' && cols.length >= 5) {
+                    if(cliente && monto > 0) {
+                        // Parsear socios del string "Ana:50, Carlos:50"
+                        const distribucion = [];
+                        if(sociosStr) {
+                            const pares = sociosStr.split(',');
+                            for(let par of pares) {
+                                const [nombreSocio, montoSocio] = par.split(':');
+                                if(nombreSocio && montoSocio) {
+                                    // Buscar socio por nombre (o crear temporal)
+                                    let socio = socios.find(s => s.nombre === nombreSocio.trim());
+                                    if(!socio) {
+                                        socio = { id: nextIdSocio++, nombre: nombreSocio.trim(), capitalInicial: 0, saldoActual: 0 };
+                                        socios.push(socio);
+                                    }
+                                    distribucion.push({ socioId: socio.id, monto: parseFloat(montoSocio) });
+                                }
+                            }
+                        }
+                        
                         prestamos.push({
-                            id: parseInt(cols[1]) || nextIdPrestamo++,
-                            cliente: cols[2] ? cols[2].replace(/^"|"$/g, '') : '',
-                            montoOriginal: parseFloat(cols[3]) || 0,
-                            fechaDesembolso: cols[4] ? cols[4].replace(/^"|"$/g, '') : '',
-                            historialAbonos: [],
-                            incobrable: cols[5] === 'TRUE',
-                            distribucion: []
+                            id: id || nextIdPrestamo++,
+                            cliente: cliente,
+                            montoOriginal: monto,
+                            fechaDesembolso: fecha,
+                            historialAbonos: [{ monto: abonos, fecha: fecha }],
+                            incobrable: incobrable,
+                            distribucion: distribucion
                         });
+                        
+                        if(id >= nextIdPrestamo) nextIdPrestamo = id + 1;
                     }
                 }
             }
-            
-            if(socios.length > 0) nextIdSocio = Math.max(...socios.map(s=>s.id)) + 1;
-            if(prestamos.length > 0) nextIdPrestamo = Math.max(...prestamos.map(p=>p.id)) + 1;
             
             actualizarSaldos();
             renderAll();
@@ -170,7 +206,7 @@
             
         } catch(e) {
             console.error('Error:', e);
-            document.getElementById('syncStatus').innerHTML = '⚠️ Error al cargar. Usando datos locales. Verifica la URL.';
+            document.getElementById('syncStatus').innerHTML = '⚠️ Error al cargar. Verifica la URL de Google Sheets.';
             document.getElementById('syncStatus').style.background = '#fee2e2';
             renderAll();
         }
@@ -266,7 +302,7 @@
         const container = document.getElementById('listaSocios');
         container.innerHTML = '';
         if(socios.length === 0) {
-            container.innerHTML = '<div class="text-center">No hay socios</div>';
+            container.innerHTML = '<div class="text-center">No hay socios registrados</div>';
             return;
         }
         for(let s of socios) {
@@ -289,7 +325,7 @@
         const container = document.getElementById('listaPrestamos');
         container.innerHTML = '';
         if(prestamos.length === 0) {
-            container.innerHTML = '<div class="text-center">No hay préstamos</div>';
+            container.innerHTML = '<div class="text-center">No hay préstamos registrados</div>';
             return;
         }
         for(let p of prestamos) {
@@ -298,6 +334,17 @@
             const prox = obtenerProxPago(p);
             const estado = p.incobrable ? 'Incobrable' : (deuda <= 0 ? 'Pagado' : 'Activo');
             const badge = p.incobrable ? 'badge-incobrable' : (deuda <= 0 ? 'badge-pagado' : 'badge-activo');
+            
+            let distribucionHtml = '';
+            if(p.distribucion && p.distribucion.length > 0) {
+                distribucionHtml = '<div style="font-size:0.65rem; margin-top:8px; background:#f1f5f9; padding:6px; border-radius:12px;">';
+                for(let d of p.distribucion) {
+                    const socio = socios.find(s => s.id === d.socioId);
+                    if(socio) distribucionHtml += `<span>${socio.nombre}: $${d.monto}</span> `;
+                }
+                distribucionHtml += '</div>';
+            }
+            
             container.innerHTML += `
                 <div class="prestamo-card">
                     <div class="prestamo-header">
@@ -310,6 +357,7 @@
                         <div>Saldo: <strong>$${deuda.toFixed(2)}</strong></div>
                         <div>Próx: ${prox ? prox.toLocaleDateString() : '—'}</div>
                     </div>
+                    ${distribucionHtml}
                     <div class="flex-buttons">
                         <button class="btn btn-outline btn-sm" onclick="verDetalle(${p.id})">📄 Ver</button>
                         ${!p.incobrable && deuda > 0 ? `<button class="btn btn-warning btn-sm" onclick="marcarIncobrable(${p.id})">⚠️ Incobrable</button>` : ''}
@@ -417,20 +465,34 @@
         const fecha = document.getElementById('fechaDesembolso').value;
         if(!cliente) return alert('Cliente requerido');
         if(isNaN(monto) || monto <= 0) return alert('Monto válido');
+        if(!fecha) return alert('Fecha requerida');
+        
         const dist = obtenerDistribucion();
         const suma = dist.reduce((s,d)=>s+d.monto,0);
         if(Math.abs(suma - monto) > 0.01) return alert(`Suma de aportes ($${suma}) debe igualar monto ($${monto})`);
+        
         for(let d of dist) {
             const s = socios.find(s=>s.id===d.socioId);
-            if(s && d.monto > s.saldoActual) return alert(`${s.nombre} solo tiene $${s.saldoActual}`);
+            if(s && d.monto > s.saldoActual) return alert(`${s.nombre} solo tiene $${s.saldoActual} disponible`);
         }
-        prestamos.push({ id: nextIdPrestamo++, cliente, montoOriginal: monto, fechaDesembolso: fecha, historialAbonos: [], incobrable: false, distribucion: dist });
+        
+        prestamos.push({
+            id: nextIdPrestamo++,
+            cliente: cliente,
+            montoOriginal: monto,
+            fechaDesembolso: fecha,
+            historialAbonos: [],
+            incobrable: false,
+            distribucion: dist
+        });
+        
         actualizarSaldos();
         renderAll();
+        
         document.getElementById('clienteNombre').value = '';
         document.getElementById('montoPrestamo').value = '100';
         document.querySelectorAll('.aporte-socio').forEach(i=>i.value='0');
-        alert('Préstamo registrado');
+        alert('✅ Préstamo registrado');
     }
 
     function registrarAbono() {
@@ -441,12 +503,13 @@
         const p = prestamos.find(p=>p.id===id);
         if(!p) return;
         const deuda = calcularDeuda(p);
-        if(monto > deuda) return alert(`Máximo: $${deuda.toFixed(2)}`);
-        p.historialAbonos.push({ monto, fecha: new Date().toISOString().slice(0,10) });
+        if(monto > deuda + 0.01) return alert(`Máximo a abonar: $${deuda.toFixed(2)}`);
+        
+        p.historialAbonos.push({ monto: monto, fecha: new Date().toISOString().slice(0,10) });
         actualizarSaldos();
         renderAll();
         document.getElementById('montoAbono').value = '';
-        alert(`Abono de $${monto} registrado`);
+        alert(`✅ Abono de $${monto} registrado`);
     }
 
     window.marcarIncobrable = function(id) {
@@ -463,9 +526,22 @@
         if(!p) return;
         const deuda = calcularDeuda(p);
         const abonado = p.historialAbonos.reduce((s,a)=>s+a.monto,0);
-        let html = `<p><strong>${escapeHtml(p.cliente)}</strong></p><p>Monto: $${p.montoOriginal}<br>Abonado: $${abonado.toFixed(2)}<br>Saldo: <strong>$${deuda.toFixed(2)}</strong></p><hr><strong>Abonos:</strong>`;
-        if(p.historialAbonos.length===0) html += '<p>No hay abonos</p>';
-        else { html += '<table class="table-simple"><tr><th>Fecha</th><th>Monto</th></tr>'; p.historialAbonos.forEach(a=>{ html += `<tr><td>${a.fecha}</td><td>$${a.monto.toFixed(2)}</td></tr>`; }); html += `</table>`; }
+        let html = `<p><strong>${escapeHtml(p.cliente)}</strong></p>
+                    <p>💰 Monto: $${p.montoOriginal}<br>💵 Abonado: $${abonado.toFixed(2)}<br>📉 Saldo: <strong>$${deuda.toFixed(2)}</strong></p>
+                    <hr><strong>📝 Distribución:</strong>`;
+        if(p.distribucion && p.distribucion.length > 0) {
+            for(let d of p.distribucion) {
+                const socio = socios.find(s => s.id === d.socioId);
+                if(socio) html += `<div>${socio.nombre}: $${d.monto}</div>`;
+            }
+        } else html += `<div>No hay distribución</div>`;
+        html += `<hr><strong>📝 Abonos:</strong>`;
+        if(p.historialAbonos.length === 0) html += `<p>No hay abonos</p>`;
+        else {
+            html += `<table class="table-simple"><tr><th>Fecha</th><th>Monto</th></tr>`;
+            p.historialAbonos.forEach(a => { html += `<tr><td>${a.fecha}</td><td>$${a.monto.toFixed(2)}</td></tr>`; });
+            html += `</table>`;
+        }
         document.getElementById('detalleBody').innerHTML = html;
         document.getElementById('detalleTitulo').innerHTML = `📄 ${escapeHtml(p.cliente)}`;
         document.getElementById('modalDetalle').style.display = 'flex';
@@ -484,9 +560,6 @@
     window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
     // Iniciar
-    socios = [];
-    prestamos = [];
-    renderAll();
     cargarDatos();
 </script>
 </body>
