@@ -98,46 +98,35 @@
         <div class="form-group"><label>Monto</label><input type="number" id="montoAbono" value="0"></div>
         <button class="btn btn-primary" id="btnRegistrarAbono">Aplicar</button>
     </div>
-
-    <div class="card">
-        <div class="card-header">⚙️ Configuración GitHub</div>
-        <div class="form-group"><label>Token GitHub</label><input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxx"></div>
-        <div class="form-group"><label>Repositorio</label><input type="text" id="githubRepo" placeholder="usuario/repositorio"></div>
-        <button class="btn btn-primary" id="btnGuardarConfig">💾 Guardar configuración</button>
-        <p class="text-center" style="font-size:0.65rem; margin-top:8px;">Con token, los datos se guardan automáticamente en GitHub</p>
-    </div>
 </div>
 
 <div id="modalSocio" class="modal"><div class="modal-content"><div class="modal-header"><h3>Nuevo Socio</h3><span class="close closeSocio">&times;</span></div><div class="form-group"><label>Nombre</label><input type="text" id="socioNombre"></div><div class="form-group"><label>Capital</label><input type="number" id="socioCapital" value="0"></div><button class="btn btn-primary" id="btnGuardarSocio">Guardar</button></div></div>
 <div id="modalDetalle" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="detalleTitulo">Detalle</h3><span class="close closeDetalle">&times;</span></div><div id="detalleBody"></div></div></div>
 
 <script>
-    // ==================== CONFIGURACIÓN ====================
+    // ============================================================================
+    // ⚠️⚠️⚠️ SOLO CAMBIA LAS DOS LÍNEAS DE ABAJO ⚠️⚠️⚠️
+    // ============================================================================
+    const GITHUB_TOKEN = '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';        // <--- PON AQUÍ TU TOKEN
+    const GITHUB_REPO = 'shikomanu02/Financiera'; // <--- PON AQUÍ TU REPOSITORIO
+    // ============================================================================
+
     let socios = [];
     let prestamos = [];
     let nextIdSocio = 1;
     let nextIdPrestamo = 1;
     let chartDist, chartSocios;
-    let githubToken = localStorage.getItem('github_token') || '';
-    let githubRepo = localStorage.getItem('github_repo') || '';
-    let sha = ''; // Para editar el archivo en GitHub
+    let sha = '';
 
-    // Cargar configuración guardada
-    if(githubToken) document.getElementById('githubToken').value = githubToken;
-    if(githubRepo) document.getElementById('githubRepo').value = githubRepo;
-
-    // ==================== GITHUB API ====================
     async function cargarDesdeGitHub() {
-        if(!githubToken || !githubRepo) {
-            document.getElementById('statusMsg').innerHTML = '⚠️ Configura token y repositorio en la sección inferior';
+        if(!GITHUB_TOKEN || !GITHUB_REPO || GITHUB_TOKEN === 'ghp_TU_TOKEN_AQUI') {
+            document.getElementById('statusMsg').innerHTML = '⚠️ Configura GITHUB_TOKEN y GITHUB_REPO en el código (líneas 260-270)';
             return;
         }
         try {
             document.getElementById('statusMsg').innerHTML = '🔄 Cargando desde GitHub...';
-            const url = `https://api.github.com/repos/${githubRepo}/contents/datos.json`;
-            const response = await fetch(url, {
-                headers: { 'Authorization': `token ${githubToken}` }
-            });
+            const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/datos.json`;
+            const response = await fetch(url, { headers: { 'Authorization': `token ${GITHUB_TOKEN}` } });
             if(response.ok) {
                 const data = await response.json();
                 sha = data.sha;
@@ -148,7 +137,6 @@
                 nextIdPrestamo = contenido.nextIdPrestamo || 1;
                 document.getElementById('statusMsg').innerHTML = '✅ Datos cargados desde GitHub';
             } else if(response.status === 404) {
-                // Archivo no existe, crear uno nuevo
                 await guardarEnGitHub();
                 document.getElementById('statusMsg').innerHTML = '✅ Archivo creado en GitHub';
             } else {
@@ -163,46 +151,24 @@
     }
 
     async function guardarEnGitHub() {
-        if(!githubToken || !githubRepo) return false;
+        if(!GITHUB_TOKEN || !GITHUB_REPO) return false;
         try {
             const data = { socios, prestamos, nextIdSocio, nextIdPrestamo };
             const contenido = btoa(JSON.stringify(data, null, 2));
-            const url = `https://api.github.com/repos/${githubRepo}/contents/datos.json`;
-            const body = {
-                message: `Actualización automática - ${new Date().toLocaleString()}`,
-                content: contenido,
-                sha: sha || undefined
-            };
-            const response = await fetch(url, {
-                method: 'PUT',
-                headers: { 'Authorization': `token ${githubToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
+            const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/datos.json`;
+            const body = { message: `Actualización - ${new Date().toLocaleString()}`, content: contenido, sha: sha || undefined };
+            const response = await fetch(url, { method: 'PUT', headers: { 'Authorization': `token ${GITHUB_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
             if(response.ok) {
                 const result = await response.json();
                 sha = result.content.sha;
                 document.getElementById('statusMsg').innerHTML = '✅ Datos guardados en GitHub';
-                setTimeout(() => {
-                    document.getElementById('statusMsg').innerHTML = '📡 Sincronizado';
-                }, 2000);
+                setTimeout(() => { document.getElementById('statusMsg').innerHTML = '📡 Sincronizado'; }, 2000);
                 return true;
             }
             return false;
-        } catch(e) {
-            console.error(e);
-            return false;
-        }
+        } catch(e) { return false; }
     }
 
-    document.getElementById('btnGuardarConfig').onclick = () => {
-        githubToken = document.getElementById('githubToken').value.trim();
-        githubRepo = document.getElementById('githubRepo').value.trim();
-        localStorage.setItem('github_token', githubToken);
-        localStorage.setItem('github_repo', githubRepo);
-        cargarDesdeGitHub();
-    };
-
-    // ==================== REGLAS Y PROYECCIÓN ====================
     function actualizarSaldos() {
         socios.forEach(s => s.saldoActual = s.capitalInicial);
         for(let p of prestamos) {
@@ -250,19 +216,13 @@
         let idx = 0;
         for(let fecha of fechas) {
             let abonosEnPeriodo = 0;
-            while(idx < abonos.length && new Date(abonos[idx].fecha) <= fecha) {
-                abonosEnPeriodo += abonos[idx].monto;
-                idx++;
-            }
+            while(idx < abonos.length && new Date(abonos[idx].fecha) <= fecha) { abonosEnPeriodo += abonos[idx].monto; idx++; }
             let saldoPre = Math.max(0, deuda - abonosEnPeriodo);
             if(saldoPre > 0) deuda = saldoPre * 1.10;
             else deuda = 0;
         }
         let abonosPost = 0;
-        while(idx < abonos.length && new Date(abonos[idx].fecha) <= fechaCorte) {
-            abonosPost += abonos[idx].monto;
-            idx++;
-        }
+        while(idx < abonos.length && new Date(abonos[idx].fecha) <= fechaCorte) { abonosPost += abonos[idx].monto; idx++; }
         return Math.round(Math.max(0, deuda - abonosPost) * 100) / 100;
     }
 
@@ -278,7 +238,6 @@
         return iter;
     }
 
-    // Proyección al 15 de diciembre
     function calcularProyeccion15Dic() {
         const fechaProy = new Date(new Date().getFullYear(), 11, 15);
         let total = 0;
@@ -292,7 +251,6 @@
         return total;
     }
 
-    // ==================== RENDER ====================
     async function renderAll() {
         renderSocios();
         renderPrestamos();
@@ -300,46 +258,28 @@
         actualizarSelectores();
         actualizarDistribucionUI();
         actualizarGraficos();
-        if(githubToken && githubRepo) await guardarEnGitHub();
+        if(GITHUB_TOKEN && GITHUB_REPO && GITHUB_TOKEN !== 'ghp_TU_TOKEN_AQUI') await guardarEnGitHub();
     }
 
     function renderSocios() {
         const container = document.getElementById('listaSocios');
         container.innerHTML = '';
-        if(socios.length === 0) {
-            container.innerHTML = '<div class="text-center">No hay socios</div>';
-            return;
-        }
+        if(socios.length === 0) { container.innerHTML = '<div class="text-center">No hay socios</div>'; return; }
         for(let s of socios) {
-            container.innerHTML += `
-                <div class="socio-card">
-                    <div class="socio-header">
-                        <span>👤 ${escapeHtml(s.nombre)}</span>
-                        <button class="btn btn-outline btn-sm" onclick="editarSocio(${s.id})">✏️</button>
-                    </div>
-                    <div class="grid-2col">
-                        <div>Capital: $${s.capitalInicial}</div>
-                        <div>Disponible: <strong>$${s.saldoActual.toFixed(2)}</strong></div>
-                    </div>
-                </div>
-            `;
+            container.innerHTML += `<div class="socio-card"><div class="socio-header"><span>👤 ${escapeHtml(s.nombre)}</span><button class="btn btn-outline btn-sm" onclick="editarSocio(${s.id})">✏️</button></div><div class="grid-2col"><div>Capital: $${s.capitalInicial}</div><div>Disponible: <strong>$${s.saldoActual.toFixed(2)}</strong></div></div></div>`;
         }
     }
 
     function renderPrestamos() {
         const container = document.getElementById('listaPrestamos');
         container.innerHTML = '';
-        if(prestamos.length === 0) {
-            container.innerHTML = '<div class="text-center">No hay préstamos</div>';
-            return;
-        }
+        if(prestamos.length === 0) { container.innerHTML = '<div class="text-center">No hay préstamos</div>'; return; }
         for(let p of prestamos) {
             const deuda = calcularDeuda(p);
             const abonado = p.historialAbonos.reduce((s,a)=>s+a.monto,0);
             const prox = obtenerProxPago(p);
             const estado = p.incobrable ? 'Incobrable' : (deuda <= 0 ? 'Pagado' : 'Activo');
             const badge = p.incobrable ? 'badge-incobrable' : (deuda <= 0 ? 'badge-pagado' : 'badge-activo');
-            
             let distribucionHtml = '';
             if(p.distribucion && p.distribucion.length > 0) {
                 distribucionHtml = '<div style="font-size:0.65rem; margin-top:8px; background:#f1f5f9; padding:6px; border-radius:12px;">';
@@ -349,26 +289,7 @@
                 }
                 distribucionHtml += '</div>';
             }
-            
-            container.innerHTML += `
-                <div class="prestamo-card">
-                    <div class="prestamo-header">
-                        <span class="cliente-nombre">${escapeHtml(p.cliente)}</span>
-                        <span class="badge ${badge}">${estado}</span>
-                    </div>
-                    <div class="grid-2col">
-                        <div>Monto: $${p.montoOriginal}</div>
-                        <div>Abonado: $${abonado.toFixed(2)}</div>
-                        <div>Saldo: <strong>$${deuda.toFixed(2)}</strong></div>
-                        <div>Próx: ${prox ? prox.toLocaleDateString() : '—'}</div>
-                    </div>
-                    ${distribucionHtml}
-                    <div class="flex-buttons">
-                        <button class="btn btn-outline btn-sm" onclick="verDetalle(${p.id})">📄 Ver</button>
-                        ${!p.incobrable && deuda > 0 ? `<button class="btn btn-warning btn-sm" onclick="marcarIncobrable(${p.id})">⚠️ Incobrable</button>` : ''}
-                    </div>
-                </div>
-            `;
+            container.innerHTML += `<div class="prestamo-card"><div class="prestamo-header"><span class="cliente-nombre">${escapeHtml(p.cliente)}</span><span class="badge ${badge}">${estado}</span></div><div class="grid-2col"><div>Monto: $${p.montoOriginal}</div><div>Abonado: $${abonado.toFixed(2)}</div><div>Saldo: <strong>$${deuda.toFixed(2)}</strong></div><div>Próx: ${prox ? prox.toLocaleDateString() : '—'}</div></div>${distribucionHtml}<div class="flex-buttons"><button class="btn btn-outline btn-sm" onclick="verDetalle(${p.id})">📄 Ver</button>${!p.incobrable && deuda > 0 ? `<button class="btn btn-warning btn-sm" onclick="marcarIncobrable(${p.id})">⚠️ Incobrable</button>` : ''}</div></div>`;
         }
     }
 
@@ -399,18 +320,10 @@
         const activos = prestamos.filter(p=>!p.incobrable).reduce((s,p)=>s+calcularDeuda(p),0);
         const incobrables = prestamos.filter(p=>p.incobrable).reduce((s,p)=>s+p.montoOriginal,0);
         if(chartDist) chartDist.destroy();
-        chartDist = new Chart(document.getElementById('chartDistribucion'), {
-            type: 'doughnut',
-            data: { labels: ['Activos', 'Incobrables'], datasets: [{ data: [activos, incobrables], backgroundColor: ['#3b82f6', '#ef4444'] }] },
-            options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 } } } } }
-        });
+        chartDist = new Chart(document.getElementById('chartDistribucion'), { type: 'doughnut', data: { labels: ['Activos', 'Incobrables'], datasets: [{ data: [activos, incobrables], backgroundColor: ['#3b82f6', '#ef4444'] }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 } } } } } });
         if(socios.length > 0 && chartSocios) chartSocios.destroy();
         if(socios.length > 0) {
-            chartSocios = new Chart(document.getElementById('chartSocios'), {
-                type: 'bar',
-                data: { labels: socios.map(s=>s.nombre.slice(0,8)), datasets: [{ label: 'Capital', data: socios.map(s=>s.capitalInicial), backgroundColor: '#60a5fa' }] },
-                options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$'+v } } } }
-            });
+            chartSocios = new Chart(document.getElementById('chartSocios'), { type: 'bar', data: { labels: socios.map(s=>s.nombre.slice(0,8)), datasets: [{ label: 'Capital', data: socios.map(s=>s.capitalInicial), backgroundColor: '#60a5fa' }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: v => '$'+v } } } } });
         }
     }
 
@@ -444,7 +357,6 @@
         });
     }
 
-    // ==================== CRUD ====================
     function agregarSocio() {
         const nombre = document.getElementById('socioNombre').value.trim();
         const capital = parseFloat(document.getElementById('socioCapital').value);
@@ -474,29 +386,16 @@
         if(!cliente) return alert('Cliente requerido');
         if(isNaN(monto) || monto <= 0) return alert('Monto válido');
         if(!fecha) return alert('Fecha requerida');
-        
         const dist = obtenerDistribucion();
         const suma = dist.reduce((s,d)=>s+d.monto,0);
         if(Math.abs(suma - monto) > 0.01) return alert(`Suma de aportes ($${suma}) debe igualar monto ($${monto})`);
-        
         for(let d of dist) {
             const s = socios.find(s=>s.id===d.socioId);
             if(s && d.monto > s.saldoActual) return alert(`${s.nombre} solo tiene $${s.saldoActual}`);
         }
-        
-        prestamos.push({
-            id: nextIdPrestamo++,
-            cliente: cliente,
-            montoOriginal: monto,
-            fechaDesembolso: fecha,
-            historialAbonos: [],
-            incobrable: false,
-            distribucion: dist
-        });
-        
+        prestamos.push({ id: nextIdPrestamo++, cliente, montoOriginal: monto, fechaDesembolso: fecha, historialAbonos: [], incobrable: false, distribucion: dist });
         actualizarSaldos();
         renderAll();
-        
         document.getElementById('clienteNombre').value = '';
         document.getElementById('montoPrestamo').value = '100';
         document.querySelectorAll('.aporte-socio').forEach(i=>i.value='0');
@@ -512,7 +411,6 @@
         if(!p) return;
         const deuda = calcularDeuda(p);
         if(monto > deuda + 0.01) return alert(`Máximo: $${deuda.toFixed(2)}`);
-        
         p.historialAbonos.push({ monto: monto, fecha: new Date().toISOString().slice(0,10) });
         actualizarSaldos();
         renderAll();
@@ -534,9 +432,7 @@
         if(!p) return;
         const deuda = calcularDeuda(p);
         const abonado = p.historialAbonos.reduce((s,a)=>s+a.monto,0);
-        let html = `<p><strong>${escapeHtml(p.cliente)}</strong></p>
-                    <p>💰 Monto: $${p.montoOriginal}<br>💵 Abonado: $${abonado.toFixed(2)}<br>📉 Saldo: <strong>$${deuda.toFixed(2)}</strong></p>
-                    <hr><strong>📝 Distribución:</strong>`;
+        let html = `<p><strong>${escapeHtml(p.cliente)}</strong></p><p>💰 Monto: $${p.montoOriginal}<br>💵 Abonado: $${abonado.toFixed(2)}<br>📉 Saldo: <strong>$${deuda.toFixed(2)}</strong></p><hr><strong>📝 Distribución:</strong>`;
         if(p.distribucion && p.distribucion.length > 0) {
             for(let d of p.distribucion) {
                 const socio = socios.find(s => s.id === d.socioId);
@@ -557,7 +453,6 @@
 
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m=>m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
 
-    // ==================== EVENTOS ====================
     document.getElementById('btnAgregarSocio').onclick = () => document.getElementById('modalSocio').style.display = 'flex';
     document.getElementById('btnGuardarSocio').onclick = agregarSocio;
     document.getElementById('btnCrearPrestamo').onclick = crearPrestamo;
@@ -567,13 +462,7 @@
     document.querySelectorAll('.close, .closeSocio, .closeDetalle').forEach(el => el.onclick = () => { document.getElementById('modalSocio').style.display = 'none'; document.getElementById('modalDetalle').style.display = 'none'; });
     window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
-    // ==================== INICIAR ====================
-    if(githubToken && githubRepo) {
-        cargarDesdeGitHub();
-    } else {
-        document.getElementById('statusMsg').innerHTML = '⚙️ Configura tu token y repositorio de GitHub para sincronización automática';
-        renderAll();
-    }
+    cargarDesdeGitHub();
 </script>
 </body>
 </html>
