@@ -40,7 +40,7 @@
         .close { font-size: 28px; cursor: pointer; }
         .socio-aporte { background: #f1f5f9; padding: 8px; border-radius: 12px; margin-bottom: 8px; }
         .chart-small { max-height: 140px; margin: 10px 0; }
-        .status { background: #d1fae5; padding: 8px; border-radius: 16px; font-size: 0.7rem; text-align: center; margin-bottom: 12px; }
+        .status { background: #fef3c7; padding: 8px; border-radius: 16px; font-size: 0.7rem; text-align: center; margin-bottom: 12px; }
         .text-center { text-align: center; }
         .table-simple { width: 100%; font-size: 0.7rem; border-collapse: collapse; }
         .table-simple td, .table-simple th { padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: left; }
@@ -49,7 +49,7 @@
 <body>
 <div class="container">
     <div class="status" id="statusMsg">
-        📁 Datos guardados localmente. Usa los botones para exportar/importar.
+        🔄 Cargando datos...
     </div>
 
     <div class="card">
@@ -58,6 +58,7 @@
             <div class="kpi-card"><div class="kpi-number" id="totalMonto">$0</div><div class="kpi-label">Desembolsado</div></div>
             <div class="kpi-card"><div class="kpi-number" id="totalSocios">$0</div><div class="kpi-label">Capital Socios</div></div>
             <div class="kpi-card"><div class="kpi-number" id="totalIncobrable">$0</div><div class="kpi-label">Incobrable</div></div>
+            <div class="kpi-card"><div class="kpi-number" id="proyeccion15">$0</div><div class="kpi-label">📈 Proyección 15 Dic</div></div>
         </div>
     </div>
 
@@ -99,14 +100,11 @@
     </div>
 
     <div class="card">
-        <div class="card-header">💾 Respaldo</div>
-        <div class="flex-buttons">
-            <button class="btn btn-outline" id="btnExportar">📤 Exportar JSON</button>
-            <label class="btn btn-outline" style="cursor:pointer;">📂 Importar JSON
-                <input type="file" id="fileImportar" accept=".json" style="display:none;">
-            </label>
-        </div>
-        <p class="text-center" style="font-size:0.65rem; margin-top:8px;">Exporta el JSON y súbelo a GitHub para sincronizar entre dispositivos.</p>
+        <div class="card-header">⚙️ Configuración GitHub</div>
+        <div class="form-group"><label>Token GitHub</label><input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxx"></div>
+        <div class="form-group"><label>Repositorio</label><input type="text" id="githubRepo" placeholder="usuario/repositorio"></div>
+        <button class="btn btn-primary" id="btnGuardarConfig">💾 Guardar configuración</button>
+        <p class="text-center" style="font-size:0.65rem; margin-top:8px;">Con token, los datos se guardan automáticamente en GitHub</p>
     </div>
 </div>
 
@@ -114,72 +112,97 @@
 <div id="modalDetalle" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="detalleTitulo">Detalle</h3><span class="close closeDetalle">&times;</span></div><div id="detalleBody"></div></div></div>
 
 <script>
-    // ==================== DATOS ====================
+    // ==================== CONFIGURACIÓN ====================
     let socios = [];
     let prestamos = [];
     let nextIdSocio = 1;
     let nextIdPrestamo = 1;
     let chartDist, chartSocios;
+    let githubToken = localStorage.getItem('github_token') || '';
+    let githubRepo = localStorage.getItem('github_repo') || '';
+    let sha = ''; // Para editar el archivo en GitHub
 
-    // ==================== LOCAL STORAGE ====================
-    function guardarLocal() {
-        const data = { socios, prestamos, nextIdSocio, nextIdPrestamo };
-        localStorage.setItem('financiera_data', JSON.stringify(data));
-    }
+    // Cargar configuración guardada
+    if(githubToken) document.getElementById('githubToken').value = githubToken;
+    if(githubRepo) document.getElementById('githubRepo').value = githubRepo;
 
-    function cargarLocal() {
-        const data = localStorage.getItem('financiera_data');
-        if(data) {
-            const parsed = JSON.parse(data);
-            socios = parsed.socios || [];
-            prestamos = parsed.prestamos || [];
-            nextIdSocio = parsed.nextIdSocio || 1;
-            nextIdPrestamo = parsed.nextIdPrestamo || 1;
+    // ==================== GITHUB API ====================
+    async function cargarDesdeGitHub() {
+        if(!githubToken || !githubRepo) {
+            document.getElementById('statusMsg').innerHTML = '⚠️ Configura token y repositorio en la sección inferior';
+            return;
         }
-        actualizarSaldos();
-        renderAll();
-    }
-
-    // ==================== EXPORTAR/IMPORTAR ====================
-    function exportarJSON() {
-        const data = { socios, prestamos, nextIdSocio, nextIdPrestamo };
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `financiera_${new Date().toISOString().slice(0,19)}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        document.getElementById('statusMsg').innerHTML = '✅ JSON exportado. Súbelo a GitHub para sincronizar.';
-        setTimeout(() => {
-            document.getElementById('statusMsg').innerHTML = '📁 Datos guardados localmente.';
-        }, 3000);
-    }
-
-    function importarJSON(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const data = JSON.parse(e.target.result);
-                socios = data.socios || [];
-                prestamos = data.prestamos || [];
-                nextIdSocio = data.nextIdSocio || 1;
-                nextIdPrestamo = data.nextIdPrestamo || 1;
-                actualizarSaldos();
-                renderAll();
-                guardarLocal();
-                document.getElementById('statusMsg').innerHTML = '✅ JSON importado correctamente.';
-                setTimeout(() => {
-                    document.getElementById('statusMsg').innerHTML = '📁 Datos guardados localmente.';
-                }, 3000);
-            } catch(err) {
-                alert('Error al leer el archivo');
+        try {
+            document.getElementById('statusMsg').innerHTML = '🔄 Cargando desde GitHub...';
+            const url = `https://api.github.com/repos/${githubRepo}/contents/datos.json`;
+            const response = await fetch(url, {
+                headers: { 'Authorization': `token ${githubToken}` }
+            });
+            if(response.ok) {
+                const data = await response.json();
+                sha = data.sha;
+                const contenido = JSON.parse(atob(data.content));
+                socios = contenido.socios || [];
+                prestamos = contenido.prestamos || [];
+                nextIdSocio = contenido.nextIdSocio || 1;
+                nextIdPrestamo = contenido.nextIdPrestamo || 1;
+                document.getElementById('statusMsg').innerHTML = '✅ Datos cargados desde GitHub';
+            } else if(response.status === 404) {
+                // Archivo no existe, crear uno nuevo
+                await guardarEnGitHub();
+                document.getElementById('statusMsg').innerHTML = '✅ Archivo creado en GitHub';
+            } else {
+                throw new Error('Error al cargar');
             }
-        };
-        reader.readAsText(file);
+            actualizarSaldos();
+            renderAll();
+        } catch(e) {
+            console.error(e);
+            document.getElementById('statusMsg').innerHTML = '⚠️ Error al cargar. Verifica token y repositorio';
+        }
     }
 
-    // ==================== REGLAS ====================
+    async function guardarEnGitHub() {
+        if(!githubToken || !githubRepo) return false;
+        try {
+            const data = { socios, prestamos, nextIdSocio, nextIdPrestamo };
+            const contenido = btoa(JSON.stringify(data, null, 2));
+            const url = `https://api.github.com/repos/${githubRepo}/contents/datos.json`;
+            const body = {
+                message: `Actualización automática - ${new Date().toLocaleString()}`,
+                content: contenido,
+                sha: sha || undefined
+            };
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${githubToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if(response.ok) {
+                const result = await response.json();
+                sha = result.content.sha;
+                document.getElementById('statusMsg').innerHTML = '✅ Datos guardados en GitHub';
+                setTimeout(() => {
+                    document.getElementById('statusMsg').innerHTML = '📡 Sincronizado';
+                }, 2000);
+                return true;
+            }
+            return false;
+        } catch(e) {
+            console.error(e);
+            return false;
+        }
+    }
+
+    document.getElementById('btnGuardarConfig').onclick = () => {
+        githubToken = document.getElementById('githubToken').value.trim();
+        githubRepo = document.getElementById('githubRepo').value.trim();
+        localStorage.setItem('github_token', githubToken);
+        localStorage.setItem('github_repo', githubRepo);
+        cargarDesdeGitHub();
+    };
+
+    // ==================== REGLAS Y PROYECCIÓN ====================
     function actualizarSaldos() {
         socios.forEach(s => s.saldoActual = s.capitalInicial);
         for(let p of prestamos) {
@@ -255,15 +278,29 @@
         return iter;
     }
 
+    // Proyección al 15 de diciembre
+    function calcularProyeccion15Dic() {
+        const fechaProy = new Date(new Date().getFullYear(), 11, 15);
+        let total = 0;
+        for(let p of prestamos) {
+            if(!p.incobrable) {
+                const deudaProy = calcularDeuda(p, fechaProy);
+                const abonado = p.historialAbonos.reduce((s,a)=>s+a.monto,0);
+                total += Math.max(0, (abonado + deudaProy) - p.montoOriginal);
+            }
+        }
+        return total;
+    }
+
     // ==================== RENDER ====================
-    function renderAll() {
+    async function renderAll() {
         renderSocios();
         renderPrestamos();
         renderKPIs();
         actualizarSelectores();
         actualizarDistribucionUI();
         actualizarGraficos();
-        guardarLocal();
+        if(githubToken && githubRepo) await guardarEnGitHub();
     }
 
     function renderSocios() {
@@ -350,10 +387,12 @@
         const totalMonto = prestamos.reduce((s,p)=>s+p.montoOriginal,0);
         const totalIncobrable = prestamos.filter(p=>p.incobrable).reduce((s,p)=>s+p.montoOriginal,0);
         const totalSociosCapital = socios.reduce((s,ss)=>s+ss.capitalInicial,0);
+        const proyeccion = calcularProyeccion15Dic();
         document.getElementById('totalPrestamos').innerText = prestamos.length;
         document.getElementById('totalMonto').innerText = `$${totalMonto.toFixed(2)}`;
         document.getElementById('totalSocios').innerText = `$${totalSociosCapital.toFixed(2)}`;
         document.getElementById('totalIncobrable').innerText = `$${totalIncobrable.toFixed(2)}`;
+        document.getElementById('proyeccion15').innerText = `$${proyeccion.toFixed(2)}`;
     }
 
     function actualizarGraficos() {
@@ -524,14 +563,17 @@
     document.getElementById('btnCrearPrestamo').onclick = crearPrestamo;
     document.getElementById('btnRegistrarAbono').onclick = registrarAbono;
     document.getElementById('btnDistAuto').onclick = distribuirAuto;
-    document.getElementById('btnExportar').onclick = exportarJSON;
-    document.getElementById('fileImportar').onchange = (e) => { if(e.target.files[0]) importarJSON(e.target.files[0]); e.target.value = ''; };
     document.getElementById('montoPrestamo').addEventListener('input', () => actualizarDistribucionUI());
     document.querySelectorAll('.close, .closeSocio, .closeDetalle').forEach(el => el.onclick = () => { document.getElementById('modalSocio').style.display = 'none'; document.getElementById('modalDetalle').style.display = 'none'; });
     window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
     // ==================== INICIAR ====================
-    cargarLocal();
+    if(githubToken && githubRepo) {
+        cargarDesdeGitHub();
+    } else {
+        document.getElementById('statusMsg').innerHTML = '⚙️ Configura tu token y repositorio de GitHub para sincronización automática';
+        renderAll();
+    }
 </script>
 </body>
 </html>
