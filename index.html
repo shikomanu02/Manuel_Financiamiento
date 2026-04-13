@@ -35,12 +35,12 @@
         .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.75rem; margin: 10px 0; background: #f8fafc; padding: 10px; border-radius: 16px; }
         .detalle-item { display: flex; justify-content: space-between; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; border-radius: 28px; width: 90%; max-width: 500px; padding: 1.5rem; }
+        .modal-content { background: white; border-radius: 28px; width: 90%; max-width: 500px; padding: 1.5rem; max-height: 80vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; margin-bottom: 1rem; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.8rem; }
         .close { font-size: 28px; cursor: pointer; }
         .socio-aporte { background: #f1f5f9; padding: 8px; border-radius: 12px; margin-bottom: 8px; }
         .chart-small { max-height: 140px; margin: 10px 0; }
-        .sync-status { background: #fef3c7; padding: 8px; border-radius: 16px; font-size: 0.7rem; text-align: center; margin-bottom: 12px; }
+        .status { background: #d1fae5; padding: 8px; border-radius: 16px; font-size: 0.7rem; text-align: center; margin-bottom: 12px; }
         .text-center { text-align: center; }
         .table-simple { width: 100%; font-size: 0.7rem; border-collapse: collapse; }
         .table-simple td, .table-simple th { padding: 6px; border-bottom: 1px solid #e2e8f0; text-align: left; }
@@ -48,8 +48,8 @@
 </head>
 <body>
 <div class="container">
-    <div class="sync-status" id="syncStatus">
-        📁 Cargando datos desde Google Sheets...
+    <div class="status" id="statusMsg">
+        📁 Datos guardados localmente. Usa los botones para exportar/importar.
     </div>
 
     <div class="card">
@@ -97,121 +97,89 @@
         <div class="form-group"><label>Monto</label><input type="number" id="montoAbono" value="0"></div>
         <button class="btn btn-primary" id="btnRegistrarAbono">Aplicar</button>
     </div>
+
+    <div class="card">
+        <div class="card-header">💾 Respaldo</div>
+        <div class="flex-buttons">
+            <button class="btn btn-outline" id="btnExportar">📤 Exportar JSON</button>
+            <label class="btn btn-outline" style="cursor:pointer;">📂 Importar JSON
+                <input type="file" id="fileImportar" accept=".json" style="display:none;">
+            </label>
+        </div>
+        <p class="text-center" style="font-size:0.65rem; margin-top:8px;">Exporta el JSON y súbelo a GitHub para sincronizar entre dispositivos.</p>
+    </div>
 </div>
 
 <div id="modalSocio" class="modal"><div class="modal-content"><div class="modal-header"><h3>Nuevo Socio</h3><span class="close closeSocio">&times;</span></div><div class="form-group"><label>Nombre</label><input type="text" id="socioNombre"></div><div class="form-group"><label>Capital</label><input type="number" id="socioCapital" value="0"></div><button class="btn btn-primary" id="btnGuardarSocio">Guardar</button></div></div>
 <div id="modalDetalle" class="modal"><div class="modal-content"><div class="modal-header"><h3 id="detalleTitulo">Detalle</h3><span class="close closeDetalle">&times;</span></div><div id="detalleBody"></div></div></div>
 
 <script>
-    // ==================== CONFIGURACIÓN ====================
-    // ⚠️ CAMBIA ESTA URL POR LA DE TU GOOGLE SHEETS PUBLICADO COMO CSV
-    const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyrjT7zDc4_l3QveR1zPV2l6wIxIKNCBWD5Ya-H5xY4BFfILfJ61BZJkXk0XbUCkYQkEDj9eq14zfP/pub?output=csv';
-    
+    // ==================== DATOS ====================
     let socios = [];
     let prestamos = [];
     let nextIdSocio = 1;
     let nextIdPrestamo = 1;
     let chartDist, chartSocios;
 
-    // ==================== CARGAR DESDE GOOGLE SHEETS ====================
-    async function cargarDatos() {
-        try {
-            document.getElementById('syncStatus').innerHTML = '🔄 Cargando desde Google Sheets...';
-            document.getElementById('syncStatus').style.background = '#fef3c7';
-            
-            // Método más simple: fetch directo (Cloudflare Pages puede tener CORS, pero lo intentamos)
-            const response = await fetch(GOOGLE_SHEET_URL);
-            const csv = await response.text();
-            
-            console.log('CSV recibido:', csv.substring(0, 300));
-            
-            const lineas = csv.split('\n').filter(l => l.trim());
-            
-            // Reiniciar datos
-            socios = [];
-            prestamos = [];
-            
-            // Saltar cabecera (primera línea)
-            for(let i = 1; i < lineas.length; i++) {
-                const linea = lineas[i];
-                // Parsear CSV respetando comillas
-                const cols = [];
-                let enComillas = false;
-                let valorActual = '';
-                
-                for(let c = 0; c < linea.length; c++) {
-                    const char = linea[c];
-                    if(char === '"') {
-                        enComillas = !enComillas;
-                    } else if(char === ',' && !enComillas) {
-                        cols.push(valorActual.trim());
-                        valorActual = '';
-                    } else {
-                        valorActual += char;
-                    }
-                }
-                cols.push(valorActual.trim());
-                
-                if(cols.length >= 3 && cols[0] && cols[0] !== 'id') {
-                    const id = parseInt(cols[0]) || 0;
-                    const cliente = cols[1] ? cols[1].replace(/^"|"$/g, '') : '';
-                    const monto = parseFloat(cols[2]) || 0;
-                    const fecha = cols[3] ? cols[3].replace(/^"|"$/g, '') : '';
-                    const abonos = parseFloat(cols[4]) || 0;
-                    const incobrable = cols[5] === 'TRUE' || cols[5] === 'true';
-                    const sociosStr = cols[6] ? cols[6].replace(/^"|"$/g, '') : '';
-                    
-                    if(cliente && monto > 0) {
-                        // Parsear socios del string "Ana:50, Carlos:50"
-                        const distribucion = [];
-                        if(sociosStr) {
-                            const pares = sociosStr.split(',');
-                            for(let par of pares) {
-                                const [nombreSocio, montoSocio] = par.split(':');
-                                if(nombreSocio && montoSocio) {
-                                    // Buscar socio por nombre (o crear temporal)
-                                    let socio = socios.find(s => s.nombre === nombreSocio.trim());
-                                    if(!socio) {
-                                        socio = { id: nextIdSocio++, nombre: nombreSocio.trim(), capitalInicial: 0, saldoActual: 0 };
-                                        socios.push(socio);
-                                    }
-                                    distribucion.push({ socioId: socio.id, monto: parseFloat(montoSocio) });
-                                }
-                            }
-                        }
-                        
-                        prestamos.push({
-                            id: id || nextIdPrestamo++,
-                            cliente: cliente,
-                            montoOriginal: monto,
-                            fechaDesembolso: fecha,
-                            historialAbonos: [{ monto: abonos, fecha: fecha }],
-                            incobrable: incobrable,
-                            distribucion: distribucion
-                        });
-                        
-                        if(id >= nextIdPrestamo) nextIdPrestamo = id + 1;
-                    }
-                }
-            }
-            
-            actualizarSaldos();
-            renderAll();
-            
-            document.getElementById('syncStatus').innerHTML = '✅ Datos sincronizados con Google Sheets';
-            document.getElementById('syncStatus').style.background = '#d1fae5';
-            setTimeout(() => {
-                document.getElementById('syncStatus').innerHTML = '📡 Todo en orden';
-            }, 3000);
-            
-        } catch(e) {
-            console.error('Error:', e);
-            document.getElementById('syncStatus').innerHTML = '⚠️ Error al cargar. Verifica la URL de Google Sheets.';
-            document.getElementById('syncStatus').style.background = '#fee2e2';
-            renderAll();
-        }
+    // ==================== LOCAL STORAGE ====================
+    function guardarLocal() {
+        const data = { socios, prestamos, nextIdSocio, nextIdPrestamo };
+        localStorage.setItem('financiera_data', JSON.stringify(data));
     }
 
+    function cargarLocal() {
+        const data = localStorage.getItem('financiera_data');
+        if(data) {
+            const parsed = JSON.parse(data);
+            socios = parsed.socios || [];
+            prestamos = parsed.prestamos || [];
+            nextIdSocio = parsed.nextIdSocio || 1;
+            nextIdPrestamo = parsed.nextIdPrestamo || 1;
+        }
+        actualizarSaldos();
+        renderAll();
+    }
+
+    // ==================== EXPORTAR/IMPORTAR ====================
+    function exportarJSON() {
+        const data = { socios, prestamos, nextIdSocio, nextIdPrestamo };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `financiera_${new Date().toISOString().slice(0,19)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById('statusMsg').innerHTML = '✅ JSON exportado. Súbelo a GitHub para sincronizar.';
+        setTimeout(() => {
+            document.getElementById('statusMsg').innerHTML = '📁 Datos guardados localmente.';
+        }, 3000);
+    }
+
+    function importarJSON(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                socios = data.socios || [];
+                prestamos = data.prestamos || [];
+                nextIdSocio = data.nextIdSocio || 1;
+                nextIdPrestamo = data.nextIdPrestamo || 1;
+                actualizarSaldos();
+                renderAll();
+                guardarLocal();
+                document.getElementById('statusMsg').innerHTML = '✅ JSON importado correctamente.';
+                setTimeout(() => {
+                    document.getElementById('statusMsg').innerHTML = '📁 Datos guardados localmente.';
+                }, 3000);
+            } catch(err) {
+                alert('Error al leer el archivo');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // ==================== REGLAS ====================
     function actualizarSaldos() {
         socios.forEach(s => s.saldoActual = s.capitalInicial);
         for(let p of prestamos) {
@@ -230,7 +198,6 @@
         }
     }
 
-    // ==================== REGLAS ====================
     function obtenerPrimerPago(fechaStr) {
         const fecha = new Date(fechaStr);
         const dia = fecha.getDate();
@@ -296,13 +263,14 @@
         actualizarSelectores();
         actualizarDistribucionUI();
         actualizarGraficos();
+        guardarLocal();
     }
 
     function renderSocios() {
         const container = document.getElementById('listaSocios');
         container.innerHTML = '';
         if(socios.length === 0) {
-            container.innerHTML = '<div class="text-center">No hay socios registrados</div>';
+            container.innerHTML = '<div class="text-center">No hay socios</div>';
             return;
         }
         for(let s of socios) {
@@ -325,7 +293,7 @@
         const container = document.getElementById('listaPrestamos');
         container.innerHTML = '';
         if(prestamos.length === 0) {
-            container.innerHTML = '<div class="text-center">No hay préstamos registrados</div>';
+            container.innerHTML = '<div class="text-center">No hay préstamos</div>';
             return;
         }
         for(let p of prestamos) {
@@ -437,6 +405,7 @@
         });
     }
 
+    // ==================== CRUD ====================
     function agregarSocio() {
         const nombre = document.getElementById('socioNombre').value.trim();
         const capital = parseFloat(document.getElementById('socioCapital').value);
@@ -473,7 +442,7 @@
         
         for(let d of dist) {
             const s = socios.find(s=>s.id===d.socioId);
-            if(s && d.monto > s.saldoActual) return alert(`${s.nombre} solo tiene $${s.saldoActual} disponible`);
+            if(s && d.monto > s.saldoActual) return alert(`${s.nombre} solo tiene $${s.saldoActual}`);
         }
         
         prestamos.push({
@@ -503,7 +472,7 @@
         const p = prestamos.find(p=>p.id===id);
         if(!p) return;
         const deuda = calcularDeuda(p);
-        if(monto > deuda + 0.01) return alert(`Máximo a abonar: $${deuda.toFixed(2)}`);
+        if(monto > deuda + 0.01) return alert(`Máximo: $${deuda.toFixed(2)}`);
         
         p.historialAbonos.push({ monto: monto, fecha: new Date().toISOString().slice(0,10) });
         actualizarSaldos();
@@ -549,18 +518,20 @@
 
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m=>m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
 
-    // Eventos
+    // ==================== EVENTOS ====================
     document.getElementById('btnAgregarSocio').onclick = () => document.getElementById('modalSocio').style.display = 'flex';
     document.getElementById('btnGuardarSocio').onclick = agregarSocio;
     document.getElementById('btnCrearPrestamo').onclick = crearPrestamo;
     document.getElementById('btnRegistrarAbono').onclick = registrarAbono;
     document.getElementById('btnDistAuto').onclick = distribuirAuto;
+    document.getElementById('btnExportar').onclick = exportarJSON;
+    document.getElementById('fileImportar').onchange = (e) => { if(e.target.files[0]) importarJSON(e.target.files[0]); e.target.value = ''; };
     document.getElementById('montoPrestamo').addEventListener('input', () => actualizarDistribucionUI());
     document.querySelectorAll('.close, .closeSocio, .closeDetalle').forEach(el => el.onclick = () => { document.getElementById('modalSocio').style.display = 'none'; document.getElementById('modalDetalle').style.display = 'none'; });
     window.onclick = (e) => { if(e.target.classList.contains('modal')) e.target.style.display = 'none'; };
 
-    // Iniciar
-    cargarDatos();
+    // ==================== INICIAR ====================
+    cargarLocal();
 </script>
 </body>
 </html>
